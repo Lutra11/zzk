@@ -2,12 +2,12 @@ export const STORIES = {
   xiao: {
     id: 'xiao',
     name: '小王',
-    role: '政府工作人员',
+    role: '政府财政工作人员',
     image: 'xiao-wang.png',
-    background: '你负责当地能源发展规划，面对塔式熔盐光热电站项目，需要先选方向，再选具体方案。',
+    background: '当地准备建设大型光热电站。项目有长期价值，但前期投入大、回本慢，财政压力和社会质疑同时出现。',
     groups: [
       {
-        title: '第一级选择 · 项目方向',
+        title: '第一份财政方案',
         situation: '面对光热电站项目，小王需要先确定方向。',
         options: [
           { text: 'A. 项目建设需要动用地方专项资金，财政压力大，拨款有待考量', subChoices: [
@@ -32,13 +32,13 @@ export const STORIES = {
   li: {
     id: 'li',
     name: '李勇',
-    role: '团队核心成员',
+    role: '科研团队核心成员',
     image: 'li-yong.png',
-    background: '你在戈壁参与国家级科研项目，面对个人前途的抉择，需要先选方向，再选具体方案。',
+    background: '项目进入攻坚阶段：实验受挫，工作艰苦，前景尚不明朗。此时，一封邀请发到了李勇的手机上。',
     groups: [
       {
-        title: '第一级选择 · 个人前途',
-        situation: '戈壁气候难耐，工作枯燥，你对项目未来发展感到担忧。',
+        title: '一封新的邀请',
+        situation: '项目进入攻坚阶段：实验受挫，工作艰苦，前景尚不明朗。此时，一封邀请发到了李勇的手机上。',
         options: [
           { text: 'A. 戈壁气候难耐，工作枯燥，你对项目未来发展感到担忧', subChoices: [
             { text: '和团队沟通，希望完善后勤保障、评估项目前景，再决定要不要继续坚守', result: '经过内心反复挣扎，你还是决定留在团队，与团队共进退。', mode: 'limited', visual: '坦诚沟通 · 评估前景 · 选择坚守' },

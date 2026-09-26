@@ -103,7 +103,7 @@
 
         <template v-else-if="roleProgress.phase === 'reveal'">
           <div class="eyebrow">教师揭示 · 知识生成</div>
-          <h2>{{ state.role === 'xiao' ? '判断背后的导向' : '怎样衡量人的价值？' }}</h2>
+          <h2>{{ state.role === 'xiao' ? '判断背后的导向' : '选择背后的价值导向' }}</h2>
           <p class="body-copy reveal">{{ currentStory.concept }}</p>
           <p v-if="currentStory.note" class="small-note">{{ currentStory.note }}</p>
         </template>

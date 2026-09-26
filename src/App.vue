@@ -495,7 +495,7 @@ onUnmounted(clearIntroTimers)
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* 天平网格容器淡入 */
+/* 天平网格容器淡入 — 仅 opacity，不能用 transform（会覆盖 wide-panel 居中） */
 .wide-panel.balance-phase-0 {
   animation: panelFadeIn .5s ease-out both;
 }
@@ -623,15 +623,14 @@ onUnmounted(clearIntroTimers)
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* balance phase 1 prompt-line 淡入 */
+/* balance phase 1 prompt-line 淡入 — 注意不能在 .wide-panel 上用 transform 动画，会覆盖 translate(-50%,-50%) 居中 */
 .balance-phase-1 .prompt-line,
-.balance-phase-1 .eyebrow,
-.balance-phase-1 {
+.balance-phase-1 .eyebrow {
   animation: promptFadeIn .6s ease-out both;
 }
 @keyframes promptFadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* balance phase 2 final-word 弹出 */

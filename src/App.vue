@@ -62,10 +62,28 @@
           </div>
         </template>
 
+        <template v-else-if="roleProgress.phase === 'subchoice'">
+          <div class="eyebrow">第 {{ roleProgress.groupIndex + 1 }} 组 · 第二级选择</div>
+          <h2>【{{ currentGroup.title }}】</h2>
+          <p class="body-copy" style="margin-bottom: 1em">你选择了：{{ currentOption.text }}</p>
+          <div class="choice-list">
+            <button
+              v-for="(sub, index) in currentSubOptions"
+              :key="sub.text"
+              type="button"
+              class="choice"
+              @click="makeSubChoice(index)"
+            >
+              <span class="letter">{{ subOptionLetter(index) }}</span>
+              <span>{{ sub.text }}</span>
+            </button>
+          </div>
+        </template>
+
         <template v-else-if="roleProgress.phase === 'result'">
-          <div class="eyebrow">第 {{ roleProgress.groupIndex + 1 }} 组 · 选择 {{ optionLetter(roleProgress.optionIndex) }}</div>
+          <div class="eyebrow">第 {{ roleProgress.groupIndex + 1 }} 组 · 选择 {{ optionLetter(roleProgress.optionIndex) }}{{ subOptionLetter(roleProgress.subOptionIndex) }}</div>
           <h2>选择带来的结局</h2>
-          <p class="body-copy">{{ currentOption.result }}</p>
+          <p class="body-copy">{{ currentSubOption.result }}</p>
         </template>
 
         <template v-else-if="roleProgress.phase === 'question'">
@@ -201,7 +219,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive } from 'vue'
 import { STORIES, INTRO_CAPTIONS, SUMMARY_STEPS, SUMMARY_CONCEPTS } from './story-data.js'
-import { createRoleProgress, chooseOption, continueAfterResult } from './story-flow.js'
+import { createRoleProgress, chooseOption, chooseSubOption, continueAfterResult } from './story-flow.js'
 import { resolvePublicAsset } from './public-asset.js'
 
 const state = reactive({
@@ -239,14 +257,26 @@ const currentCharacterImage = computed(() => currentStory.value
   : '')
 const currentGroup = computed(() => currentStory.value?.groups[roleProgress.groupIndex] ?? null)
 const currentOption = computed(() => currentGroup.value?.options[roleProgress.optionIndex] ?? null)
+const currentSubOptions = computed(() => currentOption.value?.subChoices ?? [])
+const currentSubOption = computed(() => currentSubOptions.value[roleProgress.subOptionIndex] ?? null)
 const canGoBack = computed(() => state.history.length > 0)
 const stageMode = computed(() => {
   if (state.screen === 'intro') return 'intro'
   if (state.screen === 'chooser' || state.screen === 'balance' || state.screen === 'summary') return 'supported'
-  if (roleProgress.phase === 'result' && currentOption.value) return currentOption.value.mode
+  if (roleProgress.phase === 'result' && currentSubOption.value) return currentSubOption.value.mode
+  if (roleProgress.phase === 'subchoice' && currentOption.value) {
+    const lastSub = roleProgress.subOptionIndex
+    if (lastSub !== null && currentSubOptions.value[lastSub]) return currentSubOptions.value[lastSub].mode
+    return 'normal'
+  }
   if ((roleProgress.phase === 'question' || roleProgress.phase === 'reveal') && currentStory.value) {
     const lastSelection = roleProgress.selections.at(-1)
-    return currentStory.value.groups.at(-1).options[lastSelection]?.mode ?? 'normal'
+    if (lastSelection) {
+      const grp = currentStory.value.groups.at(-1)
+      const opt = grp?.options[lastSelection.option]
+      return opt?.subChoices?.[lastSelection.sub]?.mode ?? 'normal'
+    }
+    return 'normal'
   }
   return 'normal'
 })
@@ -264,11 +294,12 @@ const progressText = computed(() => {
   if (state.screen === 'summary') return '第六课 第一框'
   if (roleProgress.phase === 'question') return `${currentStory.value.name} / 课堂追问`
   if (roleProgress.phase === 'reveal') return `${currentStory.value.name} / 知识生成`
-  return `${currentStory.value.name} / 第 ${roleProgress.groupIndex + 1} 组（共 3 组）`
+  return `${currentStory.value.name} / 第 ${roleProgress.groupIndex + 1} 组（共 ${currentStory.value.groups.length} 组）`
 })
 const visualNotes = computed(() => {
   if (state.screen !== 'role') return ''
-  if (roleProgress.phase === 'result') return currentOption.value.visual
+  if (roleProgress.phase === 'result') return currentSubOption.value?.visual ?? ''
+  if (roleProgress.phase === 'subchoice') return ''
   if (roleProgress.phase === 'question' || roleProgress.phase === 'reveal') return '回看三组选择：不同判断背后，有着不同的价值排序。'
   return roleProgress.groupIndex === 0 ? currentStory.value.background : '先看行为后果，再讨论判断依据。'
 })
@@ -303,6 +334,10 @@ function goBack() {
 }
 
 function optionLetter(index) {
+  return ['A', 'B', 'C'][index] ?? ''
+}
+
+function subOptionLetter(index) {
   return ['A', 'B'][index] ?? ''
 }
 
@@ -346,6 +381,10 @@ function showChoices() {
 
 function makeChoice(index) {
   commit(() => { chooseOption(roleProgress, index) })
+}
+
+function makeSubChoice(index) {
+  commit(() => { chooseSubOption(roleProgress, index) })
 }
 
 function advanceAfterResult() {

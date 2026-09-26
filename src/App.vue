@@ -124,21 +124,31 @@
         </div>
       </section>
 
-      <section v-if="state.screen === 'balance'" class="wide-panel" aria-live="polite">
+      <section v-if="state.screen === 'balance'" class="wide-panel" :class="`balance-phase-${state.balancePhase}`" aria-live="polite">
         <template v-if="state.balancePhase === 0">
           <div class="eyebrow">现实选择的代价与依据</div>
-          <h2>价值天平</h2>
+          <h2 class="balance-title">价值天平</h2>
           <div class="balance-grid">
-            <div class="balance-side"><span>眼前利益</span><span>个人利益</span><span>经济成本</span><span>现实压力</span></div>
-            <div class="balance-icon"></div>
-            <div class="balance-side right"><span>长远发展</span><span>社会利益</span><span>生态价值</span><span>社会贡献</span></div>
+            <div class="balance-side">
+              <span v-for="(item, i) in ['眼前利益','个人利益','经济成本','现实压力']" :key="item"
+                class="balance-item" :style="{ animationDelay: `${i * 0.12}s` }">{{ item }}</span>
+            </div>
+            <div class="balance-icon-wrap">
+              <img :src="balanceIconUrl" alt="价值天平" class="balance-svg" />
+            </div>
+            <div class="balance-side right">
+              <span v-for="(item, i) in ['长远发展','社会利益','生态价值','社会贡献']" :key="item"
+                class="balance-item" :style="{ animationDelay: `${0.48 + i * 0.12}s` }">{{ item }}</span>
+            </div>
           </div>
-          <p class="body-copy">现实选择往往有代价。我们依据什么标准判断和取舍？</p>
-          <div class="balance-question-row" style="margin-top: 2vh">
+          <p class="body-copy balance-caption">现实选择往往有代价。我们依据什么标准判断和取舍？</p>
+          <div class="balance-question-row">
             <button type="button" class="question-link" :class="{ active: state.balanceSeen.xiao }" @click="balanceAsk('xiao')">小王为什么会有不同选择？</button>
             <button type="button" class="question-link" :class="{ active: state.balanceSeen.li }" @click="balanceAsk('li')">李勇为什么会有不同选择？</button>
           </div>
-          <p class="small-note">{{ balanceAnswer }}</p>
+          <Transition name="answer-fade">
+            <p v-if="balanceAnswer" class="balance-answer" :key="state.balanceRole">{{ balanceAnswer }}</p>
+          </Transition>
         </template>
         <template v-else-if="state.balancePhase === 1">
           <div class="eyebrow">从故事回到共同问题</div>
@@ -252,6 +262,7 @@ const mirrors = Array.from({ length: 80 }, (_, index) => {
 })
 
 const currentStory = computed(() => state.role ? STORIES[state.role] : null)
+const balanceIconUrl = computed(() => resolvePublicAsset(import.meta.env.BASE_URL, 'balance.svg'))
 const currentCharacterImage = computed(() => currentStory.value
   ? resolvePublicAsset(import.meta.env.BASE_URL, currentStory.value.image)
   : '')
@@ -471,3 +482,165 @@ onUnmounted(clearIntroTimers)
 </script>
 
 <style src="../价值与价值观互动教学(1)/价值与价值观互动教学/style.css"></style>
+
+<style scoped>
+/* === 价值天平 优化 === */
+
+/* 天平标题淡入放大 */
+.balance-title {
+  animation: balanceTitleIn .6s ease-out both;
+}
+@keyframes balanceTitleIn {
+  from { opacity: 0; transform: scale(.85) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 天平网格容器淡入 */
+.wide-panel.balance-phase-0 {
+  animation: panelFadeIn .5s ease-out both;
+}
+@keyframes panelFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 天平标签逐个滑入 */
+.balance-item {
+  opacity: 0;
+  animation: itemSlideIn .5s ease-out forwards;
+}
+@keyframes itemSlideIn {
+  from { opacity: 0; transform: translateX(var(--slide-dir, -20px)); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.balance-side.right .balance-item {
+  --slide-dir: 20px;
+}
+
+/* 天平SVG图标 — 摇摆入场 */
+.balance-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.balance-svg {
+  width: 100%;
+  max-width: 140px;
+  height: auto;
+  animation: balanceScaleIn .8s ease-out both;
+}
+@keyframes balanceScaleIn {
+  0%   { opacity: 0; transform: scale(.5) rotate(-12deg); }
+  60%  { opacity: 1; transform: scale(1.08) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+/* 标题下方说明文字 */
+.balance-caption {
+  animation: captionFadeIn .6s ease-out .4s both;
+}
+@keyframes captionFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 问题按钮 — 按压波纹 + 激活高亮框 */
+.question-link {
+  position: relative;
+  overflow: hidden;
+  transition: all .3s ease;
+}
+.question-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255,235,150,.45) 0%, transparent 60%);
+  opacity: 0;
+  transform: scale(0);
+  transition: none;
+}
+.question-link:active::after {
+  opacity: 1;
+  transform: scale(1.8);
+  transition: opacity .4s, transform .5s;
+}
+.question-link.active {
+  border: 2px solid #f4c675;
+  box-shadow: 0 0 12px rgba(244,198,117,.5), 0 2px 8px rgba(0,0,0,.12);
+  background: #fff5d8;
+  transform: translateY(-1px);
+}
+
+/* 结论高亮框 */
+.balance-answer {
+  margin-top: 1.5vh;
+  padding: .8em 1.2em;
+  background: linear-gradient(135deg, #fff8e7 0%, #ffefc4 100%);
+  border: 2px solid #f4c675;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(244,198,117,.25);
+  font-size: clamp(18px, 1.25vw, 26px);
+  color: #4a3500;
+  text-align: center;
+}
+
+/* 结论 Transition */
+.answer-fade-enter-active {
+  transition: all .4s ease-out;
+}
+.answer-fade-leave-active {
+  transition: all .25s ease-in;
+}
+.answer-fade-enter-from {
+  opacity: 0;
+  transform: translateY(12px) scale(.95);
+}
+.answer-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* 选择按钮 — 缓慢切入 */
+.choice {
+  animation: choiceSlideIn .45s ease-out both;
+}
+.choice:nth-child(1) { animation-delay: .08s; }
+.choice:nth-child(2) { animation-delay: .18s; }
+.choice:nth-child(3) { animation-delay: .28s; }
+@keyframes choiceSlideIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 通用 — 模板切换淡入 */
+.story-panel > template,
+.wide-panel > template {
+  animation: contentFadeIn .35s ease-out;
+}
+@keyframes contentFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* balance phase 1 prompt-line 淡入 */
+.balance-phase-1 .prompt-line,
+.balance-phase-1 .eyebrow,
+.balance-phase-1 {
+  animation: promptFadeIn .6s ease-out both;
+}
+@keyframes promptFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* balance phase 2 final-word 弹出 */
+.balance-phase-2 .final-word {
+  animation: finalWordPop .7s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes finalWordPop {
+  0%   { opacity: 0; transform: scale(.3); }
+  60%  { opacity: 1; transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+</style>

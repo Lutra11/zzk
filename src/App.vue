@@ -166,22 +166,30 @@
         <div class="flow-grid">
           <div class="flow-col">
             <strong>人物的行动</strong>
-            <template v-for="(step, index) in visibleSummarySteps" :key="step">
-              <span>{{ step }}</span><b v-if="index < visibleSummarySteps.length - 1">↓</b>
-            </template>
+            <TransitionGroup name="flow-step" tag="div" class="flow-inner">
+              <template v-for="(step, index) in visibleSummarySteps" :key="step">
+                <span>{{ step }}</span>
+                <b v-if="index < visibleSummarySteps.length - 1" :key="`arrow-${step}`">↓</b>
+              </template>
+            </TransitionGroup>
           </div>
           <div class="flow-col">
             <strong>价值观的作用</strong>
-            <template v-for="(concept, index) in visibleSummaryConcepts" :key="concept">
-              <span>{{ concept }}</span><b v-if="index < visibleSummaryConcepts.length - 1">↓</b>
-            </template>
+            <TransitionGroup name="flow-step" tag="div" class="flow-inner">
+              <template v-for="(concept, index) in visibleSummaryConcepts" :key="concept">
+                <span>{{ concept }}</span>
+                <b v-if="index < visibleSummaryConcepts.length - 1" :key="`arrow-${concept}`">↓</b>
+              </template>
+            </TransitionGroup>
           </div>
         </div>
-        <div v-if="state.summaryStep >= 4" class="knowledge-list">
-          <p>1. 价值观对人们认识和改造世界的活动具有重要导向作用。</p>
-          <p>2. 价值观是人生的重要向导。</p>
-          <p>3. 人的价值主要在于对社会的贡献。</p>
-        </div>
+        <Transition name="knowledge-in">
+          <div v-if="state.summaryStep >= 4" class="knowledge-list" key="knowledge">
+            <p>1. 价值观对人们认识和改造世界的活动具有重要导向作用。</p>
+            <p>2. 价值观是人生的重要向导。</p>
+            <p>3. 人的价值主要在于对社会的贡献。</p>
+          </div>
+        </Transition>
       </section>
 
       <div v-if="state.screen === 'intro'" class="intro-caption">
@@ -641,5 +649,67 @@ onUnmounted(clearIntroTimers)
   0%   { opacity: 0; transform: scale(.3); }
   60%  { opacity: 1; transform: scale(1.1); }
   100% { transform: scale(1); }
+}
+
+/* === 知识归纳 summary 逐项动画 === */
+
+/* flow-col 内部容器 — 恢复 flex 布局 */
+.flow-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1vh;
+}
+
+/* TransitionGroup flow-step — 每个新 span/箭头 从下方滑入 */
+.flow-step-enter-active {
+  transition: all .5s ease-out;
+}
+.flow-step-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(.9);
+}
+.flow-step-leave-active {
+  transition: all .3s ease-in;
+}
+.flow-step-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* flow-col span 高亮闪入 */
+.flow-step-enter-active span {
+  animation: stepHighlight .6s ease-out;
+}
+@keyframes stepHighlight {
+  0%   { background: #f4c67555; border-bottom-color: #f4c675; }
+  100% { background: #dfe7e322; border-bottom-color: #b7c7c8aa; }
+}
+
+/* knowledge-list 整体从下方淡入 */
+.knowledge-in-enter-active {
+  transition: all .6s ease-out;
+}
+.knowledge-in-enter-from {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.knowledge-in-leave-active {
+  transition: all .3s ease-in;
+}
+.knowledge-in-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+/* knowledge-list 每条逐条淡入 */
+.knowledge-list p {
+  animation: knowledgeItemIn .5s ease-out both;
+}
+.knowledge-list p:nth-child(1) { animation-delay: .1s; }
+.knowledge-list p:nth-child(2) { animation-delay: .3s; }
+.knowledge-list p:nth-child(3) { animation-delay: .5s; }
+@keyframes knowledgeItemIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 </style>

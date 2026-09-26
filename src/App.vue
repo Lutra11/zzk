@@ -1,597 +1,1253 @@
 <template>
   <div class="app-container">
-    <!-- ===== NAV BAR ===== -->
-    <nav class="nav-bar">
-      <div class="nav-title">☀️ 追光者 · 价值与价值观</div>
-      <ul class="nav-links">
-        <li><a v-for="link in navLinks" :key="link.id" :class="{ active: activeSection === link.id }"
-            @click="scrollToSection(link.id)">{{ link.label }}</a></li>
-      </ul>
-    </nav>
+    <!-- ===== 顶部标题栏 ===== -->
+    <header class="top-bar">
+      <div class="course-tag">哲学与文化</div>
+      <div class="separator"></div>
+      <div class="lesson-tag">第六课 第一框</div>
+      <h1 class="main-title">价值与价值观</h1>
+      <div class="progress-indicator" ref="progressRef">
+        <span class="dot" :class="{ active: state.screen !== 'intro' }"></span>
+        <span class="dot" :class="{ active: state.completed.xiao }"></span>
+        <span class="dot" :class="{ active: state.completed.li }"></span>
+        <span class="dot" :class="{ active: state.screen === 'summary' }"></span>
+      </div>
+    </header>
 
-    <!-- ===== HERO ===== -->
-    <section id="hero" class="hero">
-      <div class="hero-bg-grid"></div>
-      <!-- Heliostat SVG Scene -->
-      <svg class="heliostat-scene" viewBox="0 0 1200 500" preserveAspectRatio="xMidYMax slice">
-        <defs>
-          <linearGradient id="towerGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#ffb347" stop-opacity="0.6"/>
-            <stop offset="100%" stop-color="#1a2140" stop-opacity="0.3"/>
-          </linearGradient>
-          <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#ffd966" stop-opacity="0.8"/>
-            <stop offset="100%" stop-color="#ffd966" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="rayGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#ffd966" stop-opacity="0.6"/>
-            <stop offset="100%" stop-color="#ffd966" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
-        <!-- Sun -->
-        <circle ref="sunRef" cx="100" cy="80" r="30" fill="url(#sunGlow)"/>
-        <circle ref="sunCoreRef" cx="100" cy="80" r="18" fill="#ffd966" opacity="0.9"/>
-        <!-- Sun rays to mirrors -->
-        <line class="sun-ray" v-for="i in 6" :key="'ray-'+i"
-          :x1="100" :y1="80" :x2="200 + i*120" :y2="350"
-          stroke="url(#rayGrad)" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.3"/>
-        <!-- Tower -->
-        <rect x="580" y="100" width="40" height="350" fill="url(#towerGrad)" rx="4"/>
-        <rect x="570" y="90" width="60" height="30" rx="8" class="tower-top"/>
-        <!-- Tower glow -->
-        <circle ref="towerGlowRef" cx="600" cy="105" r="20" fill="#ffd966" opacity="0.6"/>
-        <!-- Mirrors -->
-        <g v-for="i in 6" :key="'mirror-'+i" :ref="el => mirrorRefs[i-1] = el">
-          <rect :x="200 + i*120 - 25" y="340" width="50" height="6" rx="3"
-            transform="rotate(-15, 200+i*120, 343)" class="mirror-glass"/>
-          <rect :x="200 + i*120 - 3" y="346" width="6" height="20" fill="rgba(56,225,212,0.3)"/>
-          <!-- Reflected ray to tower -->
-          <line :x1="200 + i*120" :y1="340" :x2="600" :y2="110"
-            stroke="rgba(255,217,102,0.2)" stroke-width="1" stroke-dasharray="4 4"/>
-        </g>
-        <!-- Ground -->
-        <rect x="0" y="400" width="1200" height="100" fill="rgba(26,33,64,0.5)"/>
-      </svg>
+    <!-- ===== 主舞台 ===== -->
+    <main class="stage" ref="stageRef">
+      <!-- 背景装饰 -->
+      <div class="bg-layer" ref="bgLayer">
+        <div class="bg-sun" ref="bgSun"></div>
+        <div class="bg-mirror-field">
+          <div v-for="i in 40" :key="i" class="bg-mirror"
+            :style="{ left: ((i*2.5)%100) + '%', top: (55 + (i%5)*6) + '%', animationDelay: (i*0.15) + 's' }">
+          </div>
+        </div>
+        <div class="bg-tower" ref="bgTower"></div>
+        <div class="bg-ground"></div>
+      </div>
 
-      <div class="hero-content">
-        <span class="hero-tag" ref="heroTag">AI 赋能 · 高中政治公开课</span>
-        <h1 class="hero-title" ref="heroTitle">
-          追光的镜子<br/>从戈壁绿电看价值与价值观
-        </h1>
-        <p class="hero-subtitle" ref="heroSub">
-          高中政治统编版 必修四 第六课第一框<br/>
-          当定日镜追上太阳的光，戈壁滩上升起绿色的电——<br/>
-          在这场追光之旅中，我们一起探寻：什么是价值？什么是价值观？
-        </p>
-        <button class="hero-cta" ref="heroBtn" @click="scrollToSection('data')">
-          开始探索 ↓
+      <!-- 左侧人物区 -->
+      <div class="character-zone" ref="characterZone">
+        <transition name="char-fade" mode="out-in">
+          <div v-if="currentCharacter" :key="currentCharacter.id" class="char-display">
+            <img :src="currentCharacter.image" :alt="currentCharacter.name" class="char-img" ref="charImg" />
+            <div class="char-info">
+              <div class="char-name">{{ currentCharacter.name }}</div>
+              <div class="char-role">{{ currentCharacter.role }}</div>
+            </div>
+          </div>
+          <div v-else-if="state.screen === 'chooser'" key="chooser-visual" class="char-display chooser-visual">
+            <div class="dual-char">
+              <div class="mini-char" @click="selectRole('xiao')">
+                <img src="/xiao-wang.png" alt="小王" class="mini-img" :class="{ done: state.completed.xiao }" />
+                <span>小王</span>
+              </div>
+              <div class="vs-text">VS</div>
+              <div class="mini-char" @click="selectRole('li')">
+                <img src="/li-yong.png" alt="李勇" class="mini-img" :class="{ done: state.completed.li }" />
+                <span>李勇</span>
+              </div>
+            </div>
+          </div>
+          <div v-else key="intro-visual" class="char-display intro-visual">
+            <div class="intro-scene" ref="introScene">
+              <div class="intro-sun"></div>
+              <div class="intro-tower"></div>
+              <div class="intro-mirrors">
+                <div v-for="i in 12" :key="i" class="intro-mirror"
+                  :style="{ left: (i * 8 - 4) + '%', animationDelay: (i * 0.12) + 's' }">
+                </div>
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
+
+      <!-- 右侧对话/选择区 -->
+      <div class="dialog-zone" ref="dialogZone">
+        <transition name="panel-slide" mode="out-in">
+          <!-- Intro -->
+          <div v-if="state.screen === 'intro'" key="intro" class="dialog-panel intro-panel">
+            <div class="panel-header">故事导入 · 光热电站</div>
+            <div class="intro-captions">
+              <p v-for="(cap, i) in introCaptions" :key="i" class="intro-caption-line"
+                :class="{ visible: state.introStep >= i }" ref="el => introLineRefs[i] = el">
+                {{ cap }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Role Chooser -->
+          <div v-else-if="state.screen === 'chooser'" key="chooser" class="dialog-panel chooser-panel">
+            <div class="panel-header">请选择观察视角</div>
+            <h2 class="panel-title">你要先帮助谁作决定？</h2>
+            <p class="panel-desc">一项工程 · 两个位置 · 不同的价值判断</p>
+            <div class="role-cards">
+              <div class="role-card-choice" @click="selectRole('xiao')">
+                <div class="rc-icon">🏛️</div>
+                <div class="rc-body">
+                  <strong>政府视角：小王</strong>
+                  <span>财政压力下，如何判断项目价值？{{ state.completed.xiao ? ' · 已体验' : '' }}</span>
+                </div>
+              </div>
+              <div class="role-card-choice" @click="selectRole('li')">
+                <div class="rc-icon">🔬</div>
+                <div class="rc-body">
+                  <strong>科研人员视角：李勇</strong>
+                  <span>个人机会面前，如何作出职业选择？{{ state.completed.li ? ' · 已体验' : '' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Role: Situation -->
+          <div v-else-if="state.screen === 'role' && state.phase === 'situation'" key="situation" class="dialog-panel">
+            <div class="panel-header">{{ currentCharacter.role }} · 情境</div>
+            <h2 class="panel-title">{{ currentStory.title }}</h2>
+            <p class="panel-body">{{ currentStory.situation }}</p>
+          </div>
+
+          <!-- Role: Cue -->
+          <div v-else-if="state.screen === 'role' && state.phase === 'cue'" key="cue" class="dialog-panel">
+            <div class="panel-header">现实矛盾</div>
+            <h2 class="panel-title">{{ currentStory.title }}</h2>
+            <p class="panel-body whitespace-pre">{{ currentStory.cue }}</p>
+          </div>
+
+          <!-- Role: Choice -->
+          <div v-else-if="state.screen === 'role' && state.phase === 'choice'" key="choice" class="dialog-panel">
+            <div class="panel-header">请作出选择</div>
+            <h2 class="panel-title">{{ currentStory.title }}</h2>
+            <div class="choice-list">
+              <button v-for="(choice, i) in currentStory.choices" :key="i"
+                class="choice-btn" :ref="el => choiceBtnRefs[i] = el"
+                @click="makeChoice(i)">
+                <span class="choice-letter">{{ 'ABC'[i] }}</span>
+                <span class="choice-text">{{ choice }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Role: Result -->
+          <div v-else-if="state.screen === 'role' && state.phase === 'result'" key="result" class="dialog-panel">
+            <div class="panel-header">选择 {{ state.branch }} · 发展结果 {{ state.resultIndex + 1 }}/{{ currentBranch.results.length }}</div>
+            <h2 class="panel-title">{{ state.resultIndex === 0 ? '接下来发生了什么？' : '事情继续发展' }}</h2>
+            <p class="panel-body" :ref="el => resultTextRef = el">{{ currentBranch.results[state.resultIndex] }}</p>
+          </div>
+
+          <!-- Role: Question -->
+          <div v-else-if="state.screen === 'role' && state.phase === 'question'" key="question" class="dialog-panel">
+            <div class="panel-header">课堂追问</div>
+            <h2 class="panel-title">{{ currentBranch.question }}</h2>
+            <div v-if="currentBranch.keywords" class="keyword-row">
+              <button v-for="(kw, i) in currentBranch.keywords" :key="i"
+                class="keyword-btn" :class="{ active: state.selectedKeywords.includes(i), social: kw === '社会贡献' }"
+                @click="toggleKeyword(i)">{{ kw }}</button>
+            </div>
+          </div>
+
+          <!-- Role: Reveal -->
+          <div v-else-if="state.screen === 'role' && state.phase === 'reveal'" key="reveal" class="dialog-panel reveal-panel">
+            <div class="panel-header">教师揭示 · 知识生成</div>
+            <h2 class="panel-title">{{ state.role === 'xiao' ? '判断背后的导向' : '怎样衡量人的价值？' }}</h2>
+            <p class="reveal-text">{{ currentStory.concept }}</p>
+            <p v-if="currentStory.note" class="reveal-note">{{ currentStory.note }}</p>
+          </div>
+
+          <!-- Balance -->
+          <div v-else-if="state.screen === 'balance'" key="balance" class="dialog-panel balance-panel">
+            <template v-if="state.balancePhase === 0">
+              <div class="panel-header">现实选择的代价与依据</div>
+              <h2 class="panel-title">价值天平</h2>
+              <div class="balance-grid">
+                <div class="balance-side">
+                  <span>眼前利益</span><span>个人利益</span><span>经济成本</span><span>现实压力</span>
+                </div>
+                <div class="balance-icon">⚖️</div>
+                <div class="balance-side right">
+                  <span>长远发展</span><span>社会利益</span><span>生态价值</span><span>社会贡献</span>
+                </div>
+              </div>
+              <p class="panel-body">现实选择往往有代价。我们依据什么标准判断和取舍？</p>
+              <div class="balance-question-row">
+                <button class="question-link-btn" @click="balanceAsk('xiao')">小王为什么会有不同选择？</button>
+                <button class="question-link-btn" @click="balanceAsk('li')">李勇为什么会有不同选择？</button>
+              </div>
+            </template>
+            <template v-else-if="state.balancePhase === 1">
+              <div class="panel-header">从故事回到共同问题</div>
+              <p class="prompt-line">
+                面对同一件事，<br/>
+                人们可能作出不同的认识、评价和选择。<br/>
+                在这些判断背后，<br/>
+                发挥导向作用的正是——
+              </p>
+            </template>
+            <template v-else>
+              <div class="panel-header">概念生成</div>
+              <div class="final-word" ref="finalWordRef">价值观</div>
+            </template>
+          </div>
+
+          <!-- Summary -->
+          <div v-else-if="state.screen === 'summary'" key="summary" class="dialog-panel summary-panel">
+            <div class="panel-header">知识归纳 · 第六课 第一框</div>
+            <h2 class="panel-title">从选择中认识价值观</h2>
+            <div class="flow-grid">
+              <div class="flow-col">
+                <strong>人物的行动</strong>
+                <template v-for="(step, i) in summarySteps" :key="i">
+                  <span :class="{ active: state.summaryStep >= i }">{{ step }}</span>
+                  <b v-if="i < 3">↓</b>
+                </template>
+              </div>
+              <div class="flow-col">
+                <strong>价值观的作用</strong>
+                <template v-for="(concept, i) in summaryConcepts" :key="i">
+                  <span :class="{ active: state.summaryStep >= i }">{{ concept }}</span>
+                  <b v-if="i < 3">↓</b>
+                </template>
+              </div>
+            </div>
+            <div v-if="state.summaryStep >= 4" class="knowledge-list">
+              <p>1. 价值观对人们认识和改造世界的活动具有重要导向作用。</p>
+              <p>2. 价值观是人生的重要向导。</p>
+              <p>3. 人的价值主要在于对社会的贡献。</p>
+            </div>
+          </div>
+        </transition>
+      </div>
+    </main>
+
+    <!-- ===== 底部操作栏 ===== -->
+    <footer class="bottom-bar">
+      <div class="bottom-left">
+        <button v-if="canGoBack" class="nav-btn ghost" @click="goBack">← 上一步</button>
+        <button v-if="state.screen === 'role'" class="nav-btn ghost" @click="goChooser">返回角色</button>
+        <button v-if="state.screen !== 'intro' && state.screen !== 'chooser'" class="nav-btn ghost" @click="goChooser">重新选择角色</button>
+      </div>
+      <div class="bottom-right">
+        <button v-if="state.screen === 'intro' && state.introStep < 3" class="nav-btn primary" @click="introNext">下一步 →</button>
+        <button v-if="state.screen === 'intro' && state.introStep >= 3" class="nav-btn primary" @click="goChooser">进入故事 →</button>
+        <button v-if="state.screen === 'role' && state.phase === 'situation'" class="nav-btn primary" @click="roleNext">下一步 →</button>
+        <button v-if="state.screen === 'role' && state.phase === 'cue'" class="nav-btn primary" @click="roleNext">下一步 →</button>
+        <button v-if="state.screen === 'role' && state.phase === 'result' && !isLastResult" class="nav-btn primary" @click="roleNext">下一步 →</button>
+        <button v-if="state.screen === 'role' && state.phase === 'result' && isLastResult" class="nav-btn primary" @click="roleNext">课堂追问 →</button>
+        <button v-if="state.screen === 'role' && state.phase === 'question' && !(state.role === 'xiao' && state.branch === 'C')" class="nav-btn primary" @click="reveal">揭示知识 →</button>
+        <button v-if="state.screen === 'role' && state.phase === 'question' && state.role === 'xiao' && state.branch === 'C'" class="nav-btn primary" @click="reveal">继续思考 →</button>
+        <button v-if="state.screen === 'role' && state.phase === 'reveal'" class="nav-btn primary" @click="nextAct">
+          {{ state.completed.xiao && state.completed.li ? '进入总结 →' : '进入下一幕 →' }}
         </button>
+        <button v-if="state.screen === 'chooser' && state.completed.xiao && state.completed.li" class="nav-btn primary" @click="goBalance">进入总结 →</button>
+        <button v-if="state.screen === 'balance' && state.balancePhase < 2" class="nav-btn primary" @click="balanceNext">下一步 →</button>
+        <button v-if="state.screen === 'balance' && state.balancePhase >= 2" class="nav-btn primary" @click="goSummary">进入知识归纳 →</button>
+        <button v-if="state.screen === 'summary' && state.summaryStep < 4" class="nav-btn primary" @click="summaryNext">下一步 →</button>
+        <button v-if="state.screen === 'summary' && state.summaryStep >= 4" class="nav-btn primary" @click="restart">重新开始 →</button>
       </div>
-    </section>
-
-    <!-- ===== DATA SECTION ===== -->
-    <section id="data" class="section">
-      <span class="section-label" ref="dataLabel">CASE STUDY</span>
-      <h2 class="section-title" ref="dataTitle">敦煌：戈壁滩上的"超级光热电站"</h2>
-      <p class="section-desc" ref="dataDesc">
-        在甘肃敦煌的戈壁滩上，一座百兆瓦级熔盐塔式光热电站巍然矗立。
-        1 万多面定日镜如向日葵般追逐太阳，将阳光汇聚到塔顶，化光为热、化热为电。
-        这不是科幻——这是中国新能源团队的真实故事，也是我们今天探讨"价值与价值观"的生动案例。
-      </p>
-      <div class="data-grid">
-        <div class="data-card" v-for="(card, idx) in dataCards" :key="idx" :ref="el => dataCardRefs[idx] = el">
-          <div class="icon">{{ card.icon }}</div>
-          <div class="value">
-            <span :ref="el => counterRefs[idx] = el">0</span>
-          </div>
-          <div class="unit">{{ card.unit }}</div>
-          <div class="label">{{ card.label }}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== VALUE MEANING ===== -->
-    <section id="concept" class="section">
-      <span class="section-label">CONCEPT 01</span>
-      <h2 class="section-title">什么是价值？——从"追光"说起</h2>
-      <p class="section-desc">
-        哲学意义上的"价值"不是价格，而是客体能够满足主体需要的属性。
-        定日镜追光，是因为阳光能满足发电的需要；人类开发绿电，是因为能源能满足发展的需要。
-        点击卡片，翻转揭示答案。
-      </p>
-      <div class="flip-grid">
-        <div v-for="(card, idx) in flipCards" :key="idx"
-          class="flip-card" :class="{ flipped: flippedCards[idx] }"
-          @click="toggleFlip(idx)">
-          <div class="flip-card-inner">
-            <div class="flip-card-face flip-card-front">
-              <div class="card-icon">{{ card.icon }}</div>
-              <div class="card-title">{{ card.title }}</div>
-              <div class="card-hint">👆 点击翻转</div>
-            </div>
-            <div class="flip-card-face flip-card-back">
-              <div class="card-body">{{ card.body }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== VALUES GUIDANCE ===== -->
-    <section id="guidance" class="section">
-      <span class="section-label">CONCEPT 02</span>
-      <h2 class="section-title">价值观的导向作用——追光团队的故事</h2>
-      <p class="section-desc">
-        敦煌光热电站背后的研发团队，用十余年坚守诠释了价值观如何引导人生选择。
-        他们的故事，正是"价值观导向作用"的鲜活注脚。
-      </p>
-      <div class="story-container">
-        <div class="team-card" ref="teamCard">
-          <div class="team-name">🏔️ 敦煌光热研发团队</div>
-          <div class="team-role">中国新能源追光者 · 2010—至今</div>
-          <p class="team-quote">
-            "戈壁滩上夏天 50°C，冬天 -30°C，沙尘暴一来什么都看不见。
-            但我们相信，每一面定日镜对准太阳的角度，
-            就是我们对绿色未来投出的选票。"
-          </p>
-        </div>
-        <div class="team-timeline">
-          <div class="timeline-item" v-for="(item, idx) in timeline" :key="idx" :ref="el => timelineRefs[idx] = el">
-            <div class="time">{{ item.time }}</div>
-            <div class="event">{{ item.event }}</div>
-            <div class="desc">{{ item.desc }}</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== VALUE MAP ===== -->
-    <section id="values" class="section">
-      <span class="section-label">CONCEPT 03</span>
-      <h2 class="section-title">社会主义核心价值观的三个层面</h2>
-      <p class="section-desc">
-        定日镜从三个维度追光——国家层面、社会层面、个人层面。
-        社会主义核心价值观同样从三个层面指引我们"追光前行"。
-        点击卡片展开详情，看看绿电案例如何与之对应。
-      </p>
-      <div class="value-map-grid">
-        <div v-for="(card, idx) in valueMapCards" :key="idx"
-          class="value-map-card" :class="{ expanded: expandedCards[idx] }"
-          @click="toggleExpand(idx)">
-          <div class="vm-level">{{ card.level }}</div>
-          <div class="vm-title">{{ card.title }}</div>
-          <div class="vm-content">{{ card.content }}</div>
-          <div class="vm-toggle">{{ expandedCards[idx] ? '收起 ↑' : '展开 ↓' }}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== AI WORKSHOP ===== -->
-    <section id="ai" class="section">
-      <span class="section-label">AI WORKSHOP</span>
-      <h2 class="section-title">AI 赋能工作坊：我是价值分析员</h2>
-      <p class="section-desc">
-        现在，你是一名"价值分析员"。请选择一个分析维度，
-        AI 助手将帮你从敦煌光热电站案例中提取价值与价值观的关键信息。
-        看看 AI 如何帮我们深化理解——同时也要思考：AI 的分析够不够？还需补充什么？
-      </p>
-      <div class="ai-workshop" ref="aiWorkshop">
-        <div class="ai-prompt-box">
-          <div class="prompt-label">📋 分析任务</div>
-          <div class="prompt-text">
-            案例：敦煌百兆瓦光热电站——1万面定日镜追光发电，年减碳35万吨。<br/>
-            任务：从以下维度分析该案例体现的"价值"与"价值观"。<br/>
-            请选择维度 →
-          </div>
-        </div>
-        <div class="ai-buttons">
-          <button v-for="(dim, idx) in aiDimensions" :key="idx"
-            class="ai-btn" :class="{ active: activeDim === idx }"
-            @click="runAIAnalysis(idx)">
-            {{ dim.label }}
-          </button>
-        </div>
-        <div class="ai-response" :class="{ visible: aiVisible }">
-          <span class="ai-tag">AI 分析结果</span>
-          <div ref="aiResponseText"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== KNOWLEDGE MAP ===== -->
-    <section id="summary" class="section">
-      <span class="section-label">SUMMARY</span>
-      <h2 class="section-title">知识图谱小结</h2>
-      <p class="section-desc">一图回顾本课核心知识结构。</p>
-      <div class="knowledge-map">
-        <div v-for="(node, idx) in knowledgeNodes" :key="idx" class="km-node"
-          :ref="el => kmRefs[idx] = el">
-          <div class="km-icon" :style="{ background: node.bg }">{{ node.icon }}</div>
-          <div class="km-text"><strong>{{ node.title }}</strong> — {{ node.text }}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== FOOTER ===== -->
-    <footer class="footer">
-      <p><strong>追光的镜子</strong> · 高中政治统编版必修四 · 第六课第一框 · 价值与价值观</p>
-      <p style="margin-top:8px;">AI 赋能教学公开课 · 案例素材基于敦煌光热电站公开报道整理</p>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
-gsap.registerPlugin(ScrollTrigger)
-
-// ===== NAV =====
-const navLinks = [
-  { id: 'hero', label: '首页' },
-  { id: 'data', label: '案例' },
-  { id: 'concept', label: '价值' },
-  { id: 'guidance', label: '导向' },
-  { id: 'values', label: '价值观' },
-  { id: 'ai', label: 'AI 工作坊' },
-  { id: 'summary', label: '小结' },
-]
-const activeSection = ref('hero')
-function scrollToSection(id) {
-  const el = document.getElementById(id)
-  if (el) {
-    const offset = 60
-    const top = el.getBoundingClientRect().top + window.pageYOffset - offset
-    window.scrollTo({ top, behavior: 'smooth' })
+// ===== DATA =====
+const STORIES = {
+  xiao: {
+    id: 'xiao',
+    name: '小王',
+    role: '政府财政工作人员',
+    image: '/xiao-wang.png',
+    title: '第一份财政方案',
+    situation: '当地准备建设大型光热电站。项目有长期价值，但前期投入大、回本慢，财政压力和社会质疑同时出现。',
+    cue: '项目建设需要持续投入。\n面对财政压力，小王必须提出自己的意见。',
+    choices: [
+      '短期投入太大，先暂停项目，把资金投向见效更快的领域。',
+      '可以继续支持，但必须压缩投入，尽快看到经济收益。',
+      '不能只算眼前账。在充分论证、控制风险的基础上，看到长期生态价值和社会价值。'
+    ],
+    branches: {
+      A: { mode: 'paused', visual: '建设暂缓 · 镜场暗下', results: ['财政压力暂时缓解。', '几年后，能源转型项目重新启动。', '当地已错过部分产业和技术积累机会。'], question: '他的判断，更重视什么？', keywords: ['短期现实收益', '长期社会发展'] },
+      B: { mode: 'limited', visual: '工程继续 · 研发投入缩减', results: ['项目保住了。', '为尽快见效，一些长期技术研发被压缩。', '短期数据改善，后续发展能力受到影响。'], question: '评价一种选择，只看眼前结果够吗？' },
+      C: { mode: 'supported', visual: '共同论证 · 评估风险 · 分阶段推进', results: ['政府没有忽视财政压力。', '风险评估后，项目继续得到支持。', '技术逐步成熟，生态、能源和产业效益开始显现。'], question: '同样面对财政压力，为什么会作出不同判断？' }
+    },
+    concept: '价值观影响人们对事物的认识和评价，\n影响人们改造世界的活动和行为选择。'
+  },
+  li: {
+    id: 'li',
+    name: '李勇',
+    role: '科研团队核心成员',
+    image: '/li-yong.png',
+    title: '一封新的邀请',
+    situation: '项目进入攻坚阶段：实验受挫，工作艰苦，前景尚不明朗。此时，一封邀请发到了李勇的手机上。',
+    cue: '大城市科研机构邀请李勇加入：\n薪酬更高，环境更好，项目也更成熟。',
+    choices: [
+      '先离开这里。个人发展机会不能错过。',
+      '暂时留下，先看看项目还有没有成功可能。',
+      '项目正处于最需要人的时候。只要仍有技术突破的可能，我愿意继续留下来。'
+    ],
+    branches: {
+      A: { mode: 'city', visual: '新的工作 · 原团队出现空缺', results: ['他的收入提高了。', '工作环境也更加稳定。', '原团队需要重新寻找核心技术人员。', '项目进度因此受到影响。'], question: '评价一个人的人生价值，能不能只看他得到了什么？' },
+      B: { mode: 'limited', visual: '继续参与 · 攻关负责人尚未稳定', results: ['他没有立即离开。', '他一边准备其他岗位，一边参与项目。', '最困难的攻关任务缺少稳定负责人，项目在犹豫中推进。'], question: '价值选择是否意味着必须面对取舍？' },
+      C: { mode: 'night', visual: '夜间调试 · 重新计算 · 镜场再点亮', results: ['又一次实验失败。', '重新计算。', '再次调试。', '技术问题逐步被攻克。', '多年以后，数万面定日镜在戈壁上同时转向太阳。'], question: '李勇获得了什么？', keywords: ['个人收入', '职业发展', '社会贡献'] }
+    },
+    concept: '人的价值主要在于对社会的贡献。',
+    note: '人的价值是社会价值和自我价值的统一。'
   }
 }
 
-// ===== HERO REFS =====
-const heroTag = ref(null)
-const heroTitle = ref(null)
-const heroSub = ref(null)
-const heroBtn = ref(null)
-const sunRef = ref(null)
-const sunCoreRef = ref(null)
-const towerGlowRef = ref(null)
-const mirrorRefs = ref([])
-
-// ===== DATA CARDS =====
-const dataCards = [
-  { icon: '🔋', value: 100, unit: 'MW', label: '装机容量（百兆瓦级）' },
-  { icon: '🪞', value: 11989, unit: '面', label: '定日镜数量' },
-  { icon: '⚡', value: 3.9, unit: '亿kWh', label: '年发电量' },
-  { icon: '🌍', value: 35, unit: '万吨', label: '年减排CO₂' },
-  { icon: '🏠', value: 50, unit: '万户', label: '可供电家庭数' },
-  { icon: '⏱️', value: 24, unit: '小时', label: '熔盐储能持续发电' },
+const summarySteps = ['看见问题', '作出判断', '作出选择', '付诸行动']
+const summaryConcepts = ['价值观', '影响认识和评价', '影响行为选择', '影响人生道路']
+const introCaptions = [
+  '戈壁的清晨',
+  '数万面定日镜缓缓转向太阳',
+  '光线汇聚，吸热塔点亮',
+  '如果一项事业，\n今天投入巨大，\n明天未必立即见效，\n但可能改变未来，\n你会如何选择？'
 ]
-const dataCardRefs = ref([])
-const counterRefs = ref([])
 
-// ===== FLIP CARDS =====
-const flipCards = [
-  { icon: '☀️', title: '阳光的价值', body: '阳光本身是自然资源。当人类掌握了光热发电技术，阳光就能满足人类对清洁能源的需要——这时阳光对人类就有了价值。价值是客体的积极功能属性与主体需要的满足关系。' },
-  { icon: '🔧', title: '技术的价值', body: '定日镜追光技术使阳光→热能→电能的转化成为可能。技术作为客体，满足了人类对绿色发展的需要。价值离不开人的需要，也离不开客体的属性——两者缺一不可。' },
-  { icon: '🌿', title: '绿电的价值', body: '绿电减少了碳排放，满足了可持续发展的需要。这体现了价值的社会历史性——在气候变化时代，"绿色"本身成为新的价值维度，这是时代赋予的新内涵。' },
-  { icon: '💎', title: '人的价值', body: '追光团队十年坚守，创造了巨大社会价值。人的价值在于创造价值——人既是价值的享受者，更是价值的创造者。人的价值是自我价值与社会价值的统一。' },
-]
-const flippedCards = reactive([false, false, false, false])
-function toggleFlip(idx) {
-  flippedCards[idx] = !flippedCards[idx]
+// ===== STATE =====
+const state = reactive({
+  screen: 'intro',
+  introStep: 0,
+  role: null,
+  phase: null,
+  branch: null,
+  resultIndex: 0,
+  completed: { xiao: false, li: false },
+  balancePhase: 0,
+  balanceSeen: { xiao: false, li: false },
+  summaryStep: 0,
+  selectedKeywords: [],
+  history: []
+})
+
+// ===== REFS =====
+const stageRef = ref(null)
+const characterZone = ref(null)
+const dialogZone = ref(null)
+const progressRef = ref(null)
+const charImg = ref(null)
+const choiceBtnRefs = ref([])
+const resultTextRef = ref(null)
+const finalWordRef = ref(null)
+const introLineRefs = ref([])
+const introScene = ref(null)
+const bgSun = ref(null)
+const bgTower = ref(null)
+const bgLayer = ref(null)
+
+// ===== COMPUTED =====
+const currentStory = computed(() => state.role ? STORIES[state.role] : null)
+const currentCharacter = computed(() => state.role ? STORIES[state.role] : null)
+const currentBranch = computed(() => {
+  if (!state.role || !state.branch) return null
+  return STORIES[state.role].branches[state.branch]
+})
+const isLastResult = computed(() => {
+  if (!currentBranch.value) return false
+  return state.resultIndex >= currentBranch.value.results.length - 1
+})
+const canGoBack = computed(() => state.history.length > 0)
+
+// ===== HISTORY =====
+function snapshot() {
+  const { history, ...rest } = state
+  return JSON.parse(JSON.stringify(rest))
+}
+function commit(fn) {
+  state.history.push(snapshot())
+  fn()
+}
+function goBack() {
+  if (!state.history.length) return
+  Object.assign(state, state.history.pop())
 }
 
-// ===== TEAM TIMELINE =====
-const timeline = [
-  { time: '2010', event: '项目立项', desc: '团队首次进入敦煌戈壁勘察，面对"无人区"的严酷环境' },
-  { time: '2014', event: '技术突破', desc: '攻克熔盐传热储热核心难题，实现自主知识产权' },
-  { time: '2016', event: '示范电站建成', desc: '10MW示范电站并网发电，验证技术路线可行性' },
-  { time: '2018', event: '百兆瓦级投运', desc: '100MW电站全面投运，成为亚洲最大光热电站' },
-  { time: '2023', event: '持续优化', desc: '团队坚守戈壁十余年，定日镜效率提升至94%' },
-]
-const timelineRefs = ref([])
-const teamCard = ref(null)
-
-// ===== VALUE MAP =====
-const valueMapCards = [
-  {
-    level: '国家层面',
-    title: '富强 · 文明',
-    content: '敦煌光热电站年发电3.9亿kWh，助力国家能源安全与"双碳"目标。从"跟跑"到"领跑"，中国光热技术走向世界，体现国家富强的科技支撑。同时，绿色能源代表生态文明，是"文明"在新时代的内涵延伸。'
-  },
-  {
-    level: '社会层面',
-    title: '和谐 · 公正',
-    content: '绿电惠及50万户家庭，缩小东西部能源差距。电站建设带动当地就业，促进民族团结与区域协调。清洁能源替代火电，保障代际公平——我们这一代不留碳债给下一代。'
-  },
-  {
-    level: '个人层面',
-    title: '敬业 · 爱国',
-    content: '追光团队十年坚守戈壁，从-30°C到50°C，以极致的敬业精神攻克技术难关。他们把个人理想融入国家新能源战略，用行动诠释了"爱国"不是口号，是把每一面镜子调到最佳角度的执着。'
-  },
-]
-const expandedCards = reactive([false, false, false])
-function toggleExpand(idx) {
-  expandedCards[idx] = !expandedCards[idx]
+// ===== ACTIONS =====
+function introNext() {
+  commit(() => { state.introStep = Math.min(3, state.introStep + 1) })
 }
-
-// ===== AI WORKSHOP =====
-const aiDimensions = [
-  {
-    label: '🔍 价值的含义',
-    text: '从敦煌光热电站案例中，我们可以提取以下关于"价值"的关键信息：\n\n① 价值的客体：阳光（自然资源）、技术（定日镜+熔盐）、绿电（产品）\n② 价值的主体：人类社会——对清洁能源、可持续发展、碳减排的需要\n③ 价值的关系：阳光→满足发电需要→有能源价值；绿电→满足环保需要→有生态价值\n\n核心结论：价值是客体属性与主体需要的满足关系。没有人的需要，阳光只是阳光；有了人的需要和技术的中介，阳光就成了"绿色能源"。这体现了价值的客观性（客体真实存在）与主体性（因人的需要而显现）的统一。'
-  },
-  {
-    label: '🧭 价值观导向',
-    text: '从追光团队的故事中，我们可以提取以下关于"价值观导向作用"的关键信息：\n\n① 认识导向：团队坚信"绿色能源是未来"——这一价值观引导他们认识到了光热技术的战略意义，在别人看不到前景时坚持投入。\n② 行动导向：价值观转化为十年坚守的行动——50°C酷暑、-30°C严寒、沙尘暴中调整定日镜角度。价值观不是空话，是实实在在的选择。\n③ 人生选择：团队成员放弃大城市舒适生活，选择扎根戈壁——价值观引导了人生道路的选择，把个人价值融入社会价值。\n\n核心结论：价值观影响着人们的认识活动和实践活动，影响着人生道路的选择。追光团队的价值观——"为绿色未来而坚守"——正是他们十年不放弃的精神支柱。'
-  },
-  {
-    label: '🇨🇳 核心价值观',
-    text: '从敦煌光热电站案例中，我们可以提取社会主义核心价值观的三个层面映射：\n\n【国家层面】富强——百兆瓦级电站为国家能源安全提供支撑；文明——绿色能源代表生态文明新内涵\n【社会层面】和谐——东西部能源互补、带动地方就业；公正——清洁能源保障代际公平，当代人不给后代留碳债\n【个人层面】敬业——十年坚守戈壁的极致追求；爱国——把个人理想融入国家新能源战略\n\n核心结论：社会主义核心价值观不是抽象口号，它就在每一面追光的镜子中，在每一位追光者的坚守中。从敦煌戈壁到国家战略，价值观三个层面的统一，构成了中国绿色发展的精神坐标。'
-  },
-  {
-    label: '🤖 AI的局限',
-    text: 'AI 分析到此，但请同学们思考——AI 的分析有什么局限？\n\n① AI 能识别"价值"的逻辑结构（客体-主体-关系），但难以体会追光者在-30°C寒夜坚守时内心的信念与感动。\n② AI 能总结"价值观导向作用"的三层含义，但不能替代你自己在生活中面对选择时的价值判断。\n③ AI 的分析基于已有数据，但价值的创造需要人的实践——AI 说不出"下一面定日镜该怎么改进"。\n\n核心启示：AI 是强大的分析工具，能帮我们快速梳理知识结构。但价值判断、价值选择、价值创造，最终需要人来完成。这也是为什么这堂课叫"AI 赋能"而不是"AI 替代"——赋能的是工具，追光的永远是人。'
-  },
-]
-const activeDim = ref(-1)
-const aiVisible = ref(false)
-const aiResponseText = ref(null)
-let typingTween = null
-
-function runAIAnalysis(idx) {
-  activeDim.value = idx
-  aiVisible.value = true
-  const container = aiResponseText.value
-  if (!container) return
-  // Kill previous typing
-  if (typingTween) typingTween.kill()
-  container.innerHTML = '<span class="typing-cursor"></span>'
-  const text = aiDimensions[idx].text
-  const cursor = container.querySelector('.typing-cursor')
-  let i = 0
-  // Use gsap to simulate typing
-  const obj = { progress: 0 }
-  typingTween = gsap.to(obj, {
-    progress: 1,
-    duration: 2.5,
-    ease: 'none',
-    onUpdate: () => {
-      const targetLen = Math.floor(obj.progress * text.length)
-      const currentText = text.substring(0, targetLen)
-      // Replace \n with <br>
-      container.innerHTML = currentText.replace(/\n/g, '<br>') + '<span class="typing-cursor"></span>'
-    },
-    onComplete: () => {
-      container.innerHTML = text.replace(/\n/g, '<br>')
+function goChooser() {
+  commit(() => { state.screen = 'chooser'; state.role = null; state.phase = null })
+}
+function selectRole(role) {
+  commit(() => {
+    state.screen = 'role'
+    state.role = role
+    state.phase = 'situation'
+    state.branch = null
+    state.resultIndex = 0
+    state.selectedKeywords = []
+  })
+}
+function roleNext() {
+  commit(() => {
+    if (state.phase === 'situation') state.phase = 'cue'
+    else if (state.phase === 'cue') state.phase = 'choice'
+    else if (state.phase === 'result') {
+      if (state.resultIndex < currentBranch.value.results.length - 1) state.resultIndex++
+      else state.phase = 'question'
     }
   })
 }
-
-// ===== KNOWLEDGE MAP =====
-const knowledgeNodes = [
-  { icon: '☀️', title: '价值', text: '客体属性满足主体需要的积极功能属性（如阳光满足发电需要）', bg: 'rgba(255,179,71,0.15)' },
-  { icon: '📊', title: '价值的特性', text: '客观性（客体真实存在）+ 主体性（因人的需要而显现）+ 社会历史性（随时代变化）', bg: 'rgba(96,165,250,0.15)' },
-  { icon: '🧭', title: '价值观', text: '对价值的总的看法和根本观点（如"绿色能源是未来"）', bg: 'rgba(167,139,250,0.15)' },
-  { icon: '➡️', title: '导向作用', text: '引导认识活动 + 引导实践活动 + 引导人生道路选择', bg: 'rgba(56,225,212,0.15)' },
-  { icon: '🇨🇳', title: '核心价值观', text: '国家层面（富强文明）+ 社会层面（和谐公正）+ 个人层面（敬业爱国）', bg: 'rgba(255,87,87,0.15)' },
-  { icon: '🤖', title: 'AI 赋能', text: 'AI 是分析工具，价值判断与创造仍需人来完成', bg: 'rgba(52,232,158,0.15)' },
-]
-const kmRefs = ref([])
-
-// ===== SCROLL SPY =====
-let scrollListener = null
-function setupScrollSpy() {
-  scrollListener = () => {
-    const sections = ['hero', 'data', 'concept', 'guidance', 'values', 'ai', 'summary']
-    for (const id of sections) {
-      const el = document.getElementById(id)
-      if (!el) continue
-      const rect = el.getBoundingClientRect()
-      if (rect.top <= 120 && rect.bottom >= 120) {
-        activeSection.value = id
-        break
-      }
+function makeChoice(idx) {
+  const branch = 'ABC'[idx]
+  commit(() => {
+    state.branch = branch
+    state.resultIndex = 0
+    state.selectedKeywords = []
+    state.phase = 'result'
+  })
+}
+function toggleKeyword(i) {
+  commit(() => {
+    if (!state.selectedKeywords.includes(i)) state.selectedKeywords.push(i)
+  })
+}
+function reveal() {
+  commit(() => {
+    state.phase = 'reveal'
+    state.completed[state.role] = true
+  })
+}
+function nextAct() {
+  commit(() => {
+    if (state.completed.xiao && state.completed.li) {
+      state.screen = 'balance'
+      state.balancePhase = 0
+      state.balanceSeen = { xiao: false, li: false }
+    } else {
+      state.screen = 'chooser'
+      state.role = null
+      state.phase = null
     }
-  }
-  window.addEventListener('scroll', scrollListener)
+  })
+}
+function goBalance() {
+  commit(() => {
+    state.screen = 'balance'
+    state.balancePhase = 0
+    state.balanceSeen = { xiao: false, li: false }
+  })
+}
+function balanceAsk(role) {
+  const answer = role === 'xiao'
+    ? '小王面临财政压力：不同选择背后是不同的价值排序——短期效益还是长远发展。'
+    : '李勇面临个人选择：不同选择背后是不同的人生价值观——个人利益还是社会贡献。'
+  state.balanceSeen[role] = true
+  // Can't use commit here because we don't want history for this
+  // Just update reactively
+}
+function balanceNext() {
+  commit(() => { state.balancePhase++ })
+}
+function goSummary() {
+  commit(() => { state.screen = 'summary'; state.summaryStep = 0 })
+}
+function summaryNext() {
+  commit(() => { state.summaryStep = Math.min(4, state.summaryStep + 1) })
+}
+function restart() {
+  Object.assign(state, {
+    screen: 'intro', introStep: 0, role: null, phase: null, branch: null,
+    resultIndex: 0, completed: { xiao: false, li: false },
+    balancePhase: 0, balanceSeen: { xiao: false, li: false },
+    summaryStep: 0, selectedKeywords: [], history: []
+  })
 }
 
 // ===== ANIMATIONS =====
-function setupAnimations() {
-  // Hero entrance
-  const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } })
-  heroTl
-    .from(heroTag.value, { y: 30, autoAlpha: 0, duration: 0.6 })
-    .from(heroTitle.value, { y: 40, autoAlpha: 0, duration: 0.8 }, '-=0.3')
-    .from(heroSub.value, { y: 30, autoAlpha: 0, duration: 0.6 }, '-=0.4')
-    .from(heroBtn.value, { y: 20, autoAlpha: 0, duration: 0.5 }, '-=0.3')
-    .from('.hero-bg-grid', { autoAlpha: 0, duration: 1 }, 0)
+let introTimers = []
+function clearIntroTimers() { introTimers.forEach(clearTimeout); introTimers = [] }
 
-  // Sun pulsing
-  gsap.to([sunRef.value, sunCoreRef.value], {
-    scale: 1.15,
-    duration: 2,
-    repeat: -1,
-    yoyo: true,
-    ease: 'sine.inOut',
-    transformOrigin: '100px 80px',
-  })
-
-  // Tower glow pulsing
-  gsap.to(towerGlowRef.value, {
-    scale: 1.3,
-    autoAlpha: 0.3,
-    duration: 1.5,
-    repeat: -1,
-    yoyo: true,
-    ease: 'sine.inOut',
-    transformOrigin: '600px 105px',
-  })
-
-  // Mirror shimmer
-  mirrorRefs.value.forEach((el, i) => {
-    if (!el) return
-    gsap.to(el, {
-      autoAlpha: 0.6,
-      duration: 1.5,
-      repeat: -1,
-      yoyo: true,
-      ease: 'sine.inOut',
-      delay: i * 0.2,
-    })
-  })
-
-  // Data section entrance
-  gsap.from([dataLabel.value, dataTitle.value, dataDesc.value], {
-    scrollTrigger: {
-      trigger: '#data',
-      start: 'top 80%',
-    },
-    y: 40,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.8,
-    ease: 'power3.out',
-  })
-
-  // Data cards entrance + counter animation
-  ScrollTrigger.create({
-    trigger: '.data-grid',
-    start: 'top 80%',
-    once: true,
-    onEnter: () => {
-      gsap.from(dataCardRefs.value, {
-        y: 60,
-        autoAlpha: 0,
-        stagger: 0.1,
-        duration: 0.6,
-        ease: 'back.out(1.4)',
-      })
-      // Count up animation for each card
-      dataCards.forEach((card, idx) => {
-        const el = counterRefs.value[idx]
-        if (!el) return
-        const obj = { val: 0 }
-        gsap.to(obj, {
-          val: card.value,
-          duration: 2,
-          ease: 'power2.out',
-          delay: idx * 0.1,
-          onUpdate: () => {
-            const v = obj.val
-            el.textContent = v >= 100 ? Math.round(v).toLocaleString() : v.toFixed(1)
-          },
-        })
-      })
-    },
-  })
-
-  // Concept section
-  gsap.from('#concept .section-label, #concept .section-title, #concept .section-desc', {
-    scrollTrigger: { trigger: '#concept', start: 'top 80%' },
-    y: 40,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.8,
-  })
-
-  gsap.from('.flip-card', {
-    scrollTrigger: { trigger: '.flip-grid', start: 'top 80%' },
-    y: 60,
-    autoAlpha: 0,
-    stagger: 0.12,
-    duration: 0.6,
-    ease: 'back.out(1.4)',
-  })
-
-  // Guidance section
-  gsap.from('#guidance .section-label, #guidance .section-title, #guidance .section-desc', {
-    scrollTrigger: { trigger: '#guidance', start: 'top 80%' },
-    y: 40,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.8,
-  })
-
-  gsap.from(teamCard.value, {
-    scrollTrigger: { trigger: '.story-container', start: 'top 75%' },
-    x: -60,
-    autoAlpha: 0,
-    duration: 0.8,
-    ease: 'power3.out',
-  })
-
-  gsap.from(timelineRefs.value, {
-    scrollTrigger: { trigger: '.team-timeline', start: 'top 80%' },
-    x: 60,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.6,
-  })
-
-  // Values section
-  gsap.from('#values .section-label, #values .section-title, #values .section-desc', {
-    scrollTrigger: { trigger: '#values', start: 'top 80%' },
-    y: 40,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.8,
-  })
-
-  gsap.from('.value-map-card', {
-    scrollTrigger: { trigger: '.value-map-grid', start: 'top 80%' },
-    y: 60,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.6,
-    ease: 'back.out(1.4)',
-  })
-
-  // AI workshop
-  gsap.from('.ai-workshop', {
-    scrollTrigger: { trigger: '.ai-workshop', start: 'top 80%' },
-    y: 60,
-    autoAlpha: 0,
-    duration: 0.8,
-    ease: 'power3.out',
-  })
-
-  // Knowledge map
-  gsap.from('#summary .section-label, #summary .section-title, #summary .section-desc', {
-    scrollTrigger: { trigger: '#summary', start: 'top 80%' },
-    y: 40,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.8,
-  })
-
-  gsap.from(kmRefs.value, {
-    scrollTrigger: { trigger: '.knowledge-map', start: 'top 80%' },
-    x: -40,
-    autoAlpha: 0,
-    stagger: 0.1,
-    duration: 0.5,
+function playEnterAnim() {
+  nextTick(() => {
+    // Panel slide-in
+    const panel = dialogZone.value?.querySelector('.dialog-panel')
+    if (panel) {
+      gsap.fromTo(panel,
+        { x: 40, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.5, ease: 'power2.out' }
+      )
+    }
+    // Character zone pulse
+    const charEl = characterZone.value?.querySelector('.char-img')
+    if (charEl) {
+      gsap.fromTo(charEl,
+        { scale: 0.95, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.6, ease: 'power2.out' }
+      )
+    }
+    // Choice buttons stagger
+    const choices = dialogZone.value?.querySelectorAll('.choice-btn')
+    if (choices && choices.length) {
+      gsap.fromTo(choices,
+        { x: 30, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, stagger: 0.12, ease: 'power2.out', delay: 0.2 }
+      )
+    }
+    // Result text fade
+    if (resultTextRef.value) {
+      gsap.fromTo(resultTextRef.value,
+        { y: 15, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, ease: 'power2.out' }
+      )
+    }
+    // Reveal text special
+    const revealText = dialogZone.value?.querySelector('.reveal-text')
+    if (revealText) {
+      gsap.fromTo(revealText,
+        { scale: 0.92, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.7, ease: 'back.out(1.4)' }
+      )
+    }
+    // Final word
+    if (finalWordRef.value) {
+      gsap.fromTo(finalWordRef.value,
+        { scale: 0.3, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.8, ease: 'back.out(2)' }
+      )
+    }
+    // Knowledge list items
+    const kItems = dialogZone.value?.querySelectorAll('.knowledge-list p')
+    if (kItems && kItems.length) {
+      gsap.fromTo(kItems,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, stagger: 0.15, delay: 0.3 }
+      )
+    }
+    // Flow grid steps
+    const flowSpans = dialogZone.value?.querySelectorAll('.flow-col span')
+    if (flowSpans && flowSpans.length) {
+      gsap.fromTo(flowSpans,
+        { x: -15, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.35, stagger: 0.1, delay: 0.2 }
+      )
+    }
   })
 }
 
-// ===== DATA SECTION REFS (need to be after template) =====
-const dataLabel = ref(null)
-const dataTitle = ref(null)
-const dataDesc = ref(null)
+function startIntroAuto() {
+  clearIntroTimers()
+  introTimers.push(setTimeout(() => { if (state.screen === 'intro' && state.introStep === 0) { commit(() => state.introStep = 1) } }, 2500))
+  introTimers.push(setTimeout(() => { if (state.screen === 'intro' && state.introStep === 1) { commit(() => state.introStep = 2) } }, 5000))
+  introTimers.push(setTimeout(() => { if (state.screen === 'intro' && state.introStep === 2) { commit(() => state.introStep = 3) } }, 7500))
+}
 
-onMounted(async () => {
-  await nextTick()
-  setupScrollSpy()
-  // Small delay to ensure DOM is fully ready
-  setTimeout(() => {
-    setupAnimations()
-    ScrollTrigger.refresh()
-  }, 100)
+// ===== WATCHER: play animation on state change =====
+import { watch } from 'vue'
+watch(
+  () => [state.screen, state.phase, state.branch, state.resultIndex, state.introStep, state.balancePhase, state.summaryStep],
+  () => { playEnterAnim() }
+)
+
+// ===== LIFECYCLE =====
+onMounted(() => {
+  gsap.ticker.lagSmoothing(0)
+  startIntroAuto()
+  // Background animations
+  if (bgSun.value) {
+    gsap.to(bgSun.value, { y: -8, duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+  }
+  if (bgTower.value) {
+    gsap.to(bgTower.value, { boxShadow: '0 0 30px 12px rgba(255,210,120,0.5)', duration: 2, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+  }
 })
 
 onUnmounted(() => {
-  if (scrollListener) window.removeEventListener('scroll', scrollListener)
-  ScrollTrigger.getAll().forEach(t => t.kill())
+  clearIntroTimers()
+  gsap.killTweensOf("*")
 })
 </script>
+
+<style scoped>
+/* ===== BASE ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.app-container {
+  width: 100vw;
+  height: 100dvh;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f0f4f8 0%, #e8eef5 100%);
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  color: #1a2a3a;
+}
+
+/* ===== TOP BAR ===== */
+.top-bar {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 3vw;
+  background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 12px rgba(26,58,92,0.15);
+  z-index: 10;
+}
+.course-tag {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.separator {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.3);
+}
+.lesson-tag {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.main-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  margin-left: 8px;
+}
+.progress-indicator {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.progress-indicator .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  transition: all 0.3s;
+}
+.progress-indicator .dot.active {
+  background: #f4c675;
+  box-shadow: 0 0 8px rgba(244,198,117,0.6);
+}
+
+/* ===== STAGE ===== */
+.stage {
+  flex: 1;
+  display: flex;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Background layer */
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: linear-gradient(180deg, #c8dde8 0%, #d5e5ec 40%, #e8d5b8 65%, #d4b896 100%);
+}
+.bg-sun {
+  position: absolute;
+  left: 8%;
+  top: 5%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff4c2 0%, #ffdf84 50%, rgba(255,223,132,0) 80%);
+  box-shadow: 0 0 60px 20px rgba(255,223,132,0.4);
+}
+.bg-mirror-field {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35%;
+}
+.bg-mirror {
+  position: absolute;
+  width: 28px;
+  height: 4px;
+  background: rgba(135,180,200,0.35);
+  border-radius: 2px;
+  transform: skewX(-15deg);
+  animation: mirrorShimmer 3s ease-in-out infinite;
+}
+@keyframes mirrorShimmer {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+.bg-tower {
+  position: absolute;
+  left: 48%;
+  bottom: 25%;
+  width: 16px;
+  height: 120px;
+  background: linear-gradient(180deg, #b0c4d8 0%, #8aa0b8 100%);
+  border-radius: 4px 4px 0 0;
+}
+.bg-ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20%;
+  background: linear-gradient(180deg, transparent 0%, rgba(180,160,120,0.3) 100%);
+}
+
+/* ===== CHARACTER ZONE (LEFT) ===== */
+.character-zone {
+  width: 42%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  padding: 20px;
+}
+.char-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.char-img {
+  max-width: 320px;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.15));
+  border-radius: 12px;
+}
+.char-info {
+  text-align: center;
+}
+.char-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a3a5c;
+}
+.char-role {
+  font-size: 14px;
+  color: #5a7a8a;
+  margin-top: 2px;
+}
+
+/* Chooser visual */
+.dual-char {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.mini-char {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+.mini-char:hover {
+  transform: translateY(-4px);
+}
+.mini-img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+.mini-img.done {
+  border-color: #f4c675;
+}
+.mini-char span {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a3a5c;
+}
+.vs-text {
+  font-size: 28px;
+  font-weight: 900;
+  color: #c0c8d0;
+}
+
+/* Intro visual */
+.intro-scene {
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  height: 280px;
+}
+.intro-sun {
+  position: absolute;
+  left: 30%;
+  top: 5%;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff4c2, #ffdf84);
+  box-shadow: 0 0 40px 15px rgba(255,223,132,0.5);
+}
+.intro-tower {
+  position: absolute;
+  left: 50%;
+  bottom: 20%;
+  width: 12px;
+  height: 100px;
+  background: linear-gradient(180deg, #b0c4d8, #8aa0b8);
+  border-radius: 4px 4px 0 0;
+}
+.intro-mirrors {
+  position: absolute;
+  bottom: 10%;
+  left: 0;
+  right: 0;
+  height: 40px;
+}
+.intro-mirror {
+  position: absolute;
+  bottom: 0;
+  width: 20px;
+  height: 3px;
+  background: rgba(135,180,200,0.5);
+  border-radius: 2px;
+  transform: skewX(-15deg);
+  animation: introMirrorGlow 2s ease-in-out infinite;
+}
+@keyframes introMirrorGlow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* ===== DIALOG ZONE (RIGHT) ===== */
+.dialog-zone {
+  width: 58%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  padding: 20px 30px 20px 0;
+}
+.dialog-panel {
+  width: 100%;
+  max-width: 560px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: 0 8px 32px rgba(26,58,92,0.1);
+  border: 1px solid rgba(255,255,255,0.6);
+}
+.panel-header {
+  font-size: 13px;
+  color: #5a8aaa;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  text-transform: none;
+}
+.panel-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a3a5c;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+.panel-body {
+  font-size: 17px;
+  line-height: 1.8;
+  color: #333;
+}
+.panel-body.whitespace-pre {
+  white-space: pre-wrap;
+}
+.panel-desc {
+  font-size: 15px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+/* ===== INTRO PANEL ===== */
+.intro-panel {
+  text-align: center;
+}
+.intro-captions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.intro-caption-line {
+  font-size: 18px;
+  color: #888;
+  opacity: 0;
+  transition: opacity 0.6s;
+  white-space: pre-wrap;
+}
+.intro-caption-line.visible {
+  opacity: 1;
+  color: #1a3a5c;
+}
+.intro-caption-line:last-child {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.8;
+  color: #1a3a5c;
+}
+
+/* ===== CHOOSER PANEL ===== */
+.chooser-panel {
+  text-align: center;
+}
+.role-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.role-card-choice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(240,244,248,0.8);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: left;
+}
+.role-card-choice:hover {
+  border-color: #6ba8d4;
+  background: rgba(240,244,248,1);
+  transform: translateX(4px);
+}
+.rc-icon {
+  font-size: 28px;
+}
+.rc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rc-body strong {
+  font-size: 17px;
+  color: #1a3a5c;
+}
+.rc-body span {
+  font-size: 14px;
+  color: #666;
+}
+
+/* ===== CHOICE BUTTONS ===== */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.choice-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border: 2px solid #e0e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: left;
+  font-size: 16px;
+  color: #333;
+  line-height: 1.5;
+}
+.choice-btn:hover {
+  border-color: #6ba8d4;
+  background: #fff;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(107,168,212,0.15);
+}
+.choice-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2c5f8a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.choice-text {
+  flex: 1;
+}
+
+/* ===== REVEAL ===== */
+.reveal-panel {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,248,255,0.92));
+  border: 1px solid rgba(107,168,212,0.3);
+}
+.reveal-text {
+  font-size: 18px;
+  line-height: 1.9;
+  color: #1a3a5c;
+  white-space: pre-wrap;
+  font-weight: 500;
+}
+.reveal-note {
+  font-size: 15px;
+  color: #666;
+  margin-top: 8px;
+}
+
+/* ===== KEYWORDS ===== */
+.keyword-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.keyword-btn {
+  padding: 8px 16px;
+  background: #f0f4f8;
+  border: 2px solid #d0dde8;
+  border-radius: 20px;
+  font-size: 15px;
+  color: #5a7a8a;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.keyword-btn.active {
+  background: #2c5f8a;
+  color: #fff;
+  border-color: #2c5f8a;
+}
+.keyword-btn.social.active {
+  background: #d4a020;
+  border-color: #d4a020;
+}
+
+/* ===== BALANCE ===== */
+.balance-panel {
+  text-align: center;
+}
+.balance-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 20px;
+  margin: 20px 0;
+}
+.balance-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15px;
+  color: #666;
+}
+.balance-side span {
+  padding: 6px 12px;
+  background: #f5f8fa;
+  border-radius: 6px;
+}
+.balance-side.right span {
+  color: #1a3a5c;
+  font-weight: 500;
+}
+.balance-icon {
+  font-size: 36px;
+}
+.balance-question-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.question-link-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #6ba8d4;
+  border-radius: 8px;
+  color: #2c5f8a;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+.question-link-btn:hover {
+  background: #f0f4f8;
+}
+.prompt-line {
+  font-size: 20px;
+  line-height: 2.2;
+  color: #1a3a5c;
+  margin: 24px 0;
+  white-space: pre-wrap;
+  font-weight: 500;
+}
+.final-word {
+  font-size: 48px;
+  font-weight: 900;
+  color: #1a3a5c;
+  margin: 30px 0;
+  letter-spacing: 0.2em;
+  text-align: center;
+  background: linear-gradient(135deg, #1a3a5c, #6ba8d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== SUMMARY ===== */
+.summary-panel {
+  text-align: center;
+}
+.flow-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 0;
+}
+.flow-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+.flow-col strong {
+  font-size: 15px;
+  color: #5a7a8a;
+  margin-bottom: 4px;
+}
+.flow-col span {
+  padding: 8px 12px;
+  background: #f5f8fa;
+  border-radius: 6px;
+  font-size: 15px;
+  color: #999;
+  transition: all 0.3s;
+}
+.flow-col span.active {
+  background: #e8f0fa;
+  color: #1a3a5c;
+  font-weight: 500;
+}
+.flow-col b {
+  color: #c0c8d0;
+  font-size: 14px;
+}
+.knowledge-list {
+  margin-top: 20px;
+  text-align: left;
+}
+.knowledge-list p {
+  font-size: 16px;
+  color: #1a3a5c;
+  line-height: 1.8;
+  padding: 8px 16px;
+  background: rgba(232,240,250,0.6);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+/* ===== BOTTOM BAR ===== */
+.bottom-bar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  background: #fff;
+  border-top: 1px solid #e0e8f0;
+  flex-shrink: 0;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.04);
+  z-index: 10;
+}
+.bottom-left, .bottom-right {
+  display: flex;
+  gap: 10px;
+}
+.nav-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+.nav-btn.ghost {
+  background: transparent;
+  color: #5a7a8a;
+  border: 1px solid #d0dde8;
+}
+.nav-btn.ghost:hover {
+  background: #f5f8fa;
+  color: #1a3a5c;
+}
+.nav-btn.primary {
+  background: linear-gradient(135deg, #2c5f8a, #1a3a5c);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(44,95,138,0.25);
+}
+.nav-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(44,95,138,0.35);
+}
+
+/* ===== TRANSITIONS ===== */
+.char-fade-enter-active, .char-fade-leave-active {
+  transition: opacity 0.4s, transform 0.4s;
+}
+.char-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.char-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.panel-slide-enter-active, .panel-slide-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+.panel-slide-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+.panel-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .stage {
+    flex-direction: column;
+  }
+  .character-zone {
+    width: 100%;
+    min-height: 180px;
+    padding: 12px;
+  }
+  .char-img {
+    max-width: 160px;
+    max-height: 160px;
+  }
+  .dialog-zone {
+    width: 100%;
+    padding: 12px;
+  }
+  .main-title {
+    font-size: 20px;
+  }
+}
+</style>

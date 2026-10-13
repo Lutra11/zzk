@@ -33,7 +33,9 @@
       <img
         v-if="state.screen === 'role' && currentStory"
         class="character visible"
-        :src="currentCharacterImage"
+        :class="{ 'ending-gif': currentEndingImage }"
+        :key="currentCharacterSrc"
+        :src="currentCharacterSrc"
         :alt="`${currentStory.role}${currentStory.name}`"
       >
 
@@ -236,7 +238,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive } from 'vue'
-import { STORIES, INTRO_CAPTIONS, SUMMARY_STEPS, SUMMARY_CONCEPTS } from './story-data.js'
+import { STORIES, INTRO_CAPTIONS, SUMMARY_STEPS, SUMMARY_CONCEPTS, ENDING_GIFS } from './story-data.js'
 import { createRoleProgress, chooseOption, chooseSubOption, continueAfterResult } from './story-flow.js'
 import { resolvePublicAsset } from './public-asset.js'
 
@@ -278,6 +280,15 @@ const currentGroup = computed(() => currentStory.value?.groups[roleProgress.grou
 const currentOption = computed(() => currentGroup.value?.options[roleProgress.optionIndex] ?? null)
 const currentSubOptions = computed(() => currentOption.value?.subChoices ?? [])
 const currentSubOption = computed(() => currentSubOptions.value[roleProgress.subOptionIndex] ?? null)
+// 结局阶段：按「一级 + 二级」选择编码（如 BA）查找该分支的结局 GIF
+const currentEndingImage = computed(() => {
+  if (!currentStory.value || roleProgress.phase !== 'result') return ''
+  if (roleProgress.optionIndex === null || roleProgress.subOptionIndex === null) return ''
+  const code = `${optionLetter(roleProgress.optionIndex)}${subOptionLetter(roleProgress.subOptionIndex)}`
+  const gif = ENDING_GIFS[state.role]?.[code]
+  return gif ? resolvePublicAsset(import.meta.env.BASE_URL, gif) : ''
+})
+const currentCharacterSrc = computed(() => currentEndingImage.value || currentCharacterImage.value)
 const canGoBack = computed(() => state.history.length > 0)
 const stageMode = computed(() => {
   if (state.screen === 'intro') return 'intro'
@@ -711,5 +722,16 @@ onUnmounted(clearIntroTimers)
 @keyframes knowledgeItemIn {
   from { opacity: 0; transform: translateX(-20px); }
   to   { opacity: 1; transform: translateX(0); }
+}
+
+/* === 结局 GIF 人物图 === */
+/* 小王 C 组结局为「突破」舞台模式，原样式会隐藏人物；结局 GIF 需保持可见 */
+.stage[data-mode="breakthrough"] .character.ending-gif.visible {
+  opacity: 1;
+}
+
+/* 放结局 GIF 时，盒内图片定位改为居中（默认 bottom 是为站立立绘设计的） */
+.character.ending-gif {
+  object-position: center;
 }
 </style>
